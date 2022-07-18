@@ -59,8 +59,6 @@ porta_ssh = "22"
 usuario = "usuario"
 
 def gera_log(mensagem: str):
-    '''Função para gerar os logs do script e gravar no arquivo de log 
-    constante na var'iavel arq_logs'''
     data = datetime.now()
     dia = data.strftime("%d")
     mes = data.strftime("%m")
@@ -78,8 +76,6 @@ def gera_log(mensagem: str):
         exit (3) #Não foi possível criar/abrir o arquivo de log
 
 def data_e_valida(data:str )->bool:
-    '''Verifica se a data que consta no arquivo de origem é válida'''
-
     data_valida = False
     ano = int(data[0:4])
     mes = int(data[4:6])
@@ -100,20 +96,15 @@ def data_e_valida(data:str )->bool:
     return data_valida
 
 def checa_intervalo (minutos_do_arquivo:str, intervalo_aceito:list)->bool:
-    '''Verifica se o minuto do arquivo está dentro do intervalo de minutos aceitos
-    descritos nas variáveis intervalo_superior_hora e intervalo_inferior_hora'''
-
-    minutos = minutos_do_arquivo
-    intervalo_aceito = intervalo_aceito
-    if minutos in intervalo_aceito:
-        intervalo_aceito = True
-    else:
-        intervalo_aceito = False
-    return intervalo_aceito
+        minutos = minutos_do_arquivo
+        intervalo_aceito = intervalo_aceito
+        if minutos in intervalo_aceito:
+            intervalo_aceito = True
+        else:
+            intervalo_aceito = False
+        return intervalo_aceito
 
 def is_meia_noite(hora:str)->bool:
-    '''Verifica se a hora de geração do arquivo foi meia noite'''
-    
     meia_noite = False
     if hora == '00':
         meia_noite = True
@@ -122,8 +113,6 @@ def is_meia_noite(hora:str)->bool:
     return meia_noite
 
 def is_23h(hora:str)->bool:
-    '''Verifica se a hora de geração do arquivo foi 23h'''
-
     horas_23 = False
     if hora == '23':
         horas_23 = True
@@ -131,24 +120,38 @@ def is_23h(hora:str)->bool:
         horas_23 = False
     return horas_23
 
-def is_deontem(arq_data_de_amanha:str, arq_data_de_hoje:str)->bool:
-    '''Verifica se a data do arquivo é do dia anterior'''
+def intervalo_hora_valido(data_arquivo_origem:str)->bool:
+    intervalo_valido = False
+    #Indica a data de hoje no formato HHMM - 0 pad
+    hora_atual = datetime.now()
+    #Decompõe da data_arquivo_origem HHMM
+    hora_arquivo = datetime.strptime(data_arquivo_origem,'%Y%m%d%H%M')
+    #Calcula o intervalo de horas entre a data do arquivo e a data atual
+    intervalo_horas = int(f'{((hora_atual - hora_arquivo) / 3600).total_seconds():0.0f}')
+    if intervalo_horas >= 0 and intervalo_horas <= 2:
+        intervalo_valido = True
+    else:
+        intervalo_valido = False
+    return intervalo_valido
 
+def is_deontem(arq_data_de_amanha:str, arq_data_de_hoje:str, data_arquivo_origem:str)->bool:
     if arq_data_de_amanha == arq_data_de_hoje:
-            e_de_ontem = True
+            hora_valida = intervalo_hora_valido(data_arquivo_origem)
+            if hora_valida:
+                e_de_ontem = True
+            else:
+                e_de_ontem = False
     else:
             e_de_ontem = False
-    return e_de_ontem
+    return e_de_ontem    
 
 def data_arquivo_ok(data_arq:str)->bool:
-    """Verifica se Data do Arquivo encontra-se no prazo determinado como 
-    válido, sendo permitido a data do dia ou a data do dia anterior, 
-    devido a transição de horário quando o arquivo for gerado entre 
-    23:57H e 23:59H do dia seguinte. Verifica ainda se o minuto da 
-    hora está dentro do intervalo de minutos aceitos, sendo permitido os 
-    intervalos de minutos constantes nas variávies intervalo_superior_hora 
-    e intervalo_inferior_hora"""
-
+    """Verifica se Data do Arquivo e DIFERENTE da Data de Hoje e
+    Se a Data do Arquivo e DIFERENTE da data de Ontem, ou seja
+    se o arquivo está dentro dos intervalos de data aceitos
+    arquivo deve ser de hoje ou de ontem, devido a transição de horário 
+    quando o arquivo for gerado entre 23H e 01H 
+    """
     if data_e_valida(data_arq) is True:
         #Data de hoje formatada para YYYYMMDD
         data_hoje = date.today().strftime('%Y%m%d')
@@ -174,10 +177,10 @@ def data_arquivo_ok(data_arq:str)->bool:
 def ajustar_data_arquivo_destino(data_arquivo_origem:str)->str:
     #Indica a data de hoje no formato YYYYMMDD - 0 pad
     data_hoje = date.today().strftime('%Y%m%d')
-    #Usada para ajustar a data constante no nome do arquivo para o dia seguinte
-    data_dia_seguinte = (date.today()+timedelta(days=1)).strftime('%Y%m%d')
     #Captura a data constante no nome do arquivo de origem
     data_arquivo_original = data_arquivo_origem[0:8]
+    #Usada para ajustar a data constante no nome do arquivo para o dia seguinte
+    data_arquivo_M1 = (datetime.strptime(data_arquivo_original, '%Y%m%d') + timedelta(days=1)).strftime('%Y%m%d')
     #Decompõe da data_arquivo_origem HHMM
     hora_arq_origem = data_arquivo_origem[8:10] 
     min_arq_origem = data_arquivo_origem[10:12]
@@ -187,7 +190,7 @@ def ajustar_data_arquivo_destino(data_arquivo_origem:str)->str:
     hora_arq_ajustada = hora_arq_origem
     min_arq_ajustado = min_arq_origem
     #Verifica se o arquivo é da data de ontem
-    arq_de_ontem = is_deontem(data_dia_seguinte, data_hoje)
+    arq_de_ontem = is_deontem(data_arquivo_M1, data_hoje, data_arquivo_origem)
     #Verifica se está no intervalo de INFERIOR a 00:57 - 00:59
     intervalo_inferior_aceito = checa_intervalo(min_arq_origem, intervalo_inferior_hora)
     #Verifica se está no intervalo de POSTERIOR a 00:00 - 00:03
@@ -198,11 +201,17 @@ def ajustar_data_arquivo_destino(data_arquivo_origem:str)->str:
     e_23_hora = is_23h(hora_arq_origem) #True se é 23h
     #Verifica se o arquivo e de ontem e e das 23h e a hora esta no intervalo de 23:57 a 23:59
     if (arq_de_ontem) and (e_23_hora) and (intervalo_inferior_aceito):
-        data_arq_ajustada = data_dia_seguinte
+        data_arq_ajustada = data_arquivo_M1
         hora_arq_ajustada = '00'
         min_arq_ajustado  = '00'
         data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
         gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Estou no horario 23h do dia Anterior - Intervalo 23:57 - 23:59')
+    elif (arq_de_ontem) and (e_23_hora) and (intervalo_superior_aceito):
+        #Data do arquivo e data atual são iguais - estão no mesmo dia
+        hora_arq_ajustada = hora_arq_origem
+        min_arq_ajustado  = '00'
+        data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
+        gera_log(f'Data do Arquivo Original {data_arquivo_origem} - com data de hoje e Intervalo 23:00 - 23:03')
     #Verifica se o arquivo e de hoje e o horario e MEIA-NOITE e a hora esta no intervalo de 00:57 a 00:59
     elif (data_arquivo_original == data_hoje) and (e_meia_noite) and (intervalo_inferior_aceito):
         hora_arq_ajustada = '01'
@@ -211,37 +220,43 @@ def ajustar_data_arquivo_destino(data_arquivo_origem:str)->str:
         gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Estou no horario 00 - Intervalo 00:57 - 00:59')
     #Verifica se o arquivo e de hoje e o horario e 23h e a hora esta no intervalo de 23:57 a 23:59
     elif (data_arquivo_original == data_hoje) and (e_23_hora) and (intervalo_inferior_aceito):
-        data_arq_ajustada = data_dia_seguinte
+        data_arq_ajustada = data_arquivo_M1
         hora_arq_ajustada = '00'
         min_arq_ajustado  = '00'
         data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
         gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Data de Hoje 23H e estou no Intervalo 23:57 - 23:59')
-    # Verifica se o arquivo e de hoje e 
-    # se a hora esta no intervalo de XX:57 a XX:59 
-    # Do período das 00H as 22H
-    # ajusta para o horario cheio XX:00
+    # Verifica se o arquivo e de hoje e se a hora esta no intervalo de XX:57 a XX:59 
+    # Do período das 00H as 22H ajusta para o horario cheio XX:00
     elif (data_arquivo_original == data_hoje) and (e_23_hora == False) and (intervalo_inferior_aceito):
         #Data do arquivo e data atual são iguais - estão no mesmo dia
-        hora_1 = hora_arq_origem[0:1]
-        hora_2 = hora_arq_origem[1:2]
-        if int(hora_1) == 0:
-            if int(hora_2) <= 8:
-                #hora_2 é string, precisa fazer um cast para somar
-                hora_arq_ajustada = int(hora_2) + 1
-                hora_arq_ajustada = "0" + str(hora_arq_ajustada)
+        if intervalo_hora_valido(data_arquivo_origem):
+            hora_1 = hora_arq_origem[0:1]
+            hora_2 = hora_arq_origem[1:2]
+            if int(hora_1) == 0:
+                if int(hora_2) <= 8:
+                    #hora_2 é string, precisa fazer um cast para somar
+                    hora_arq_ajustada = int(hora_2) + 1
+                    hora_arq_ajustada = "0" + str(hora_arq_ajustada)
+                    min_arq_ajustado = '00'
+            elif (int(hora_arq_origem) <= 22) and (int(hora_arq_origem) >= 9):
+                hora_arq_ajustada = int(hora_arq_origem) + 1
                 min_arq_ajustado = '00'
-        elif (int(hora_arq_origem) <= 22) and (int(hora_arq_origem) >= 9):
-            hora_arq_ajustada = int(hora_arq_origem) + 1
-            min_arq_ajustado = '00'
-        data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-        gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Data de Hoje entre 01H e 22H e estou no Intervalo XX:57 - XX:59')        
+            data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
+            gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Data de Hoje entre 01H e 22H e estou no Intervalo XX:57 - XX:59')
+        else:
+            data_arq_ajustada = None
+            gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Não Está no Intervalo Aceito')            
     #Verifica se o arquivo e de hoje e o horario esta no intervalo de XX:00 a XX:03
     elif (data_arquivo_original == data_hoje) and (intervalo_superior_aceito):
         #Data do arquivo e data atual são iguais - estão no mesmo dia
-        hora_arq_ajustada = hora_arq_origem
-        min_arq_ajustado  = '00'
-        data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-        gera_log(f'Data do Arquivo Original {data_arquivo_origem} - com data de hoje e Intervalo XX:00 - XX:03')
+        if intervalo_hora_valido(data_arquivo_origem):
+            hora_arq_ajustada = hora_arq_origem
+            min_arq_ajustado  = '00'
+            data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
+            gera_log(f'Data do Arquivo Original {data_arquivo_origem} - com data de hoje e Intervalo XX:00 - XX:03')
+        else:
+            data_arq_ajustada = None
+            gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Não Está no Intervalo Aceito')
     #Caso as regras acima nao sejam satisfeitas, nao houve ajuste de datas e o arquivo e invalido
     else:
         data_arq_ajustada = None
@@ -275,6 +290,8 @@ def seleciona_arquivo_destino(arquivo_origem:str)->str:
     data_arq_ajustada = ajustar_data_arquivo_destino(data_arq_origem)
     if data_arq_ajustada == data_arq_origem:
         arquivo_destino =  arquivo_origem
+    elif data_arq_ajustada == None:
+        arquivo_destino = None
     else:
         arquivo_destino = f'{arq_destino_parte01}_{data_arq_ajustada}_{arq_destino_parte_02}'
     return arquivo_destino
@@ -313,6 +330,10 @@ if arquivo_origem is None:
 data_arq_origem = arquivo_origem.split('_')[2]
 if data_arquivo_ok(data_arq_origem):
     arquivo_destino = seleciona_arquivo_destino(arquivo_origem)
+    if arquivo_destino is None:
+        mensagem = f'Não consegui montar o nome do arquivo destino - {arquivo_destino} - VERIFIQUE !!!' 
+        gera_log(mensagem)
+        exit(2)
     arquivo_destino = f'{dir_remoto_dados}/{arquivo_destino}'
     transferiu_arq = transfere_arq(arquivo_origem, arquivo_destino)
     if transferiu_arq:
