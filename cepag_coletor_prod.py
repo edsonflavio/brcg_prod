@@ -352,4 +352,12 @@ if data_arquivo_ok(data_arq_origem):
         exit(2)
 else:
     gera_log(f'Data do arquivo de origem {data_arq_origem} não tem uma data válida!!!')
-    exit(2)
+    arquivo_origem = f'{arq_logs}'
+    arquivo_destino = f'{dir_remoto_logs}/{arq_logs_destino}'
+    transferiu_logs = transfere_arq(arquivo_origem, arquivo_destino)
+    if transferiu_logs:
+        exit(0) # Terminou com Sucesso
+    else:
+        mensagem = f'Erro ao transferir arquivo de LOGS {arquivo_origem} para {arquivo_destino} - INVESTIGUE!!!'
+        gera_log(mensagem)
+        exit(3) #Erro ao transferir arquivo de LOGS
