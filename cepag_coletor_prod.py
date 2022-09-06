@@ -27,6 +27,10 @@
 #Rev 05 - Alterado em 10/07/2022 por Edson Flavio
 #Rev 06 - Ajustado os controles sobre a data dos arquivos, incluído verificação dos intervalos máximo para as datas dos arquvivos
 #	checa_intervalo(), intervalo_hora_valido(), data_valida()
+#Rev 07 - Alterado para reconhecer o novo nome do arquivo Reach_raw_202205030701_RINEX_3_03.zip
+#                                                         Reach_raw_20220906160103_RINEX_3_03.zip
+#	Ajustado os intervalos para representar os minutos 55-59 e 00-05
+#
 ##################################################################
 import os
 import subprocess as sp
@@ -43,6 +47,8 @@ dir_remoto_dados = "/tmp"
 dir_remoto_logs = "/tmp"
 # Insira aqui o diretório do arquivo de dados do GNSS
 dir_dados = "/data/logs"
+# Insira aqui o diretorio onde e gravado o log do script
+dir_logs_script = "/home/xxxxx/scripts"
 # Insira aqui o nome do arquivo de log do script
 arq_logs = "logs.txt"
 # Insira aqui o nome do arquivo de destino que será transferido o log do script
@@ -66,7 +72,7 @@ def gera_log(mensagem: str):
     hora = data.strftime("%H")
     minuto = data.strftime("%M")
     try:
-        arquivo_de_logs = f'{arq_logs}'
+        arquivo_de_logs = f'{dir_logs_script}/{arq_logs}'
         with open(arquivo_de_logs, 'a') as f:
             log = f'{dia}/{mes}/{ano} {hora}:{minuto} - {mensagem}'
             print(log, file=f)
@@ -191,41 +197,41 @@ def ajustar_data_arquivo_destino(data_arquivo_origem:str)->str:
     min_arq_ajustado = min_arq_origem
     #Verifica se o arquivo é da data de ontem
     arq_de_ontem = is_deontem(data_arquivo_M1, data_hoje, data_arquivo_origem)
-    #Verifica se está no intervalo de INFERIOR a 00:57 - 00:59
+    #Verifica se está no intervalo de INFERIOR a 00:55 - 00:59
     intervalo_inferior_aceito = checa_intervalo(min_arq_origem, intervalo_inferior_hora)
-    #Verifica se está no intervalo de POSTERIOR a 00:00 - 00:03
+    #Verifica se está no intervalo de POSTERIOR a 00:00 - 00:05
     intervalo_superior_aceito = checa_intervalo(min_arq_origem, intervalo_superior_hora)
     #Verifica se e meia-noite
     e_meia_noite = is_meia_noite(hora_arq_origem) #True se for meia-noite
     #Verifica se sao 23h
     e_23_hora = is_23h(hora_arq_origem) #True se é 23h
-    #Verifica se o arquivo e de ontem e e das 23h e a hora esta no intervalo de 23:57 a 23:59
+    #Verifica se o arquivo e de ontem e e das 23h e a hora esta no intervalo de 23:55 a 23:59
     if (arq_de_ontem) and (e_23_hora) and (intervalo_inferior_aceito):
         data_arq_ajustada = data_arquivo_M1
         hora_arq_ajustada = '00'
         min_arq_ajustado  = '00'
         data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-        gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Estou no horario 23h do dia Anterior - Intervalo 23:57 - 23:59')
+        gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Estou no horario 23h do dia Anterior - Intervalo 23:55 - 23:59')
     elif (arq_de_ontem) and (e_23_hora) and (intervalo_superior_aceito):
         #Data do arquivo e data atual são iguais - estão no mesmo dia
         hora_arq_ajustada = hora_arq_origem
         min_arq_ajustado  = '00'
         data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-        gera_log(f'Data do Arquivo Original {data_arquivo_origem} - com data de hoje e Intervalo 23:00 - 23:03')
-    #Verifica se o arquivo e de hoje e o horario e MEIA-NOITE e a hora esta no intervalo de 00:57 a 00:59
+        gera_log(f'Data do Arquivo Original {data_arquivo_origem} - com data de hoje e Intervalo 23:00 - 23:05')
+    #Verifica se o arquivo e de hoje e o horario e MEIA-NOITE e a hora esta no intervalo de 00:55 a 00:59
     elif (data_arquivo_original == data_hoje) and (e_meia_noite) and (intervalo_inferior_aceito):
         hora_arq_ajustada = '01'
         min_arq_ajustado  = '00'
         data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-        gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Estou no horario 00 - Intervalo 00:57 - 00:59')
-    #Verifica se o arquivo e de hoje e o horario e 23h e a hora esta no intervalo de 23:57 a 23:59
+        gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Estou no horario 00 - Intervalo 00:55 - 00:59')
+    #Verifica se o arquivo e de hoje e o horario e 23h e a hora esta no intervalo de 23:55 a 23:59
     elif (data_arquivo_original == data_hoje) and (e_23_hora) and (intervalo_inferior_aceito):
         data_arq_ajustada = data_arquivo_M1
         hora_arq_ajustada = '00'
         min_arq_ajustado  = '00'
         data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-        gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Data de Hoje 23H e estou no Intervalo 23:57 - 23:59')
-    # Verifica se o arquivo e de hoje e se a hora esta no intervalo de XX:57 a XX:59 
+        gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Data de Hoje 23H e estou no Intervalo 23:55 - 23:59')
+    # Verifica se o arquivo e de hoje e se a hora esta no intervalo de XX:55 a XX:59 
     # Do período das 00H as 22H ajusta para o horario cheio XX:00
     elif (data_arquivo_original == data_hoje) and (e_23_hora == False) and (intervalo_inferior_aceito):
         #Data do arquivo e data atual são iguais - estão no mesmo dia
@@ -242,18 +248,18 @@ def ajustar_data_arquivo_destino(data_arquivo_origem:str)->str:
                 hora_arq_ajustada = int(hora_arq_origem) + 1
                 min_arq_ajustado = '00'
             data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-            gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Data de Hoje entre 01H e 22H e estou no Intervalo XX:57 - XX:59')
+            gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Data de Hoje entre 01H e 22H e estou no Intervalo XX:55 - XX:59')
         else:
             data_arq_ajustada = None
             gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Não Está no Intervalo Aceito')            
-    #Verifica se o arquivo e de hoje e o horario esta no intervalo de XX:00 a XX:03
+    #Verifica se o arquivo e de hoje e o horario esta no intervalo de XX:00 a XX:05
     elif (data_arquivo_original == data_hoje) and (intervalo_superior_aceito):
         #Data do arquivo e data atual são iguais - estão no mesmo dia
         if intervalo_hora_valido(data_arquivo_origem):
             hora_arq_ajustada = hora_arq_origem
             min_arq_ajustado  = '00'
             data_arq_ajustada = f'{data_arq_ajustada}{hora_arq_ajustada}{min_arq_ajustado}'
-            gera_log(f'Data do Arquivo Original {data_arquivo_origem} - com data de hoje e Intervalo XX:00 - XX:03')
+            gera_log(f'Data do Arquivo Original {data_arquivo_origem} - com data de hoje e Intervalo XX:00 - XX:05')
         else:
             data_arq_ajustada = None
             gera_log(f'Data do Arquivo Original - {data_arquivo_origem} - Não Está no Intervalo Aceito')
@@ -328,6 +334,7 @@ if arquivo_origem is None:
     gera_log(mensagem)
     exit(2)
 data_arq_origem = arquivo_origem.split('_')[2]
+data_arq_origem = data_arq_origem[0:12]
 if data_arquivo_ok(data_arq_origem):
     arquivo_destino = seleciona_arquivo_destino(arquivo_origem)
     if arquivo_destino is None:
@@ -337,8 +344,8 @@ if data_arquivo_ok(data_arq_origem):
     arquivo_destino = f'{dir_remoto_dados}/{arquivo_destino}'
     transferiu_arq = transfere_arq(arquivo_origem, arquivo_destino)
     if transferiu_arq:
-        arquivo_origem = f'{arq_logs}'
-        arquivo_destino = f'{dir_remoto_logs}/{arq_logs_destino}'
+	arquivo_origem = f'{dir_logs_script}/{arq_logs}'
+	arquivo_destino = f'{dir_remoto_logs}/{arq_logs_destino}'
         transferiu_logs = transfere_arq(arquivo_origem, arquivo_destino)
         if transferiu_logs:
             exit(0) # Terminou com Sucesso
@@ -352,7 +359,7 @@ if data_arquivo_ok(data_arq_origem):
         exit(2)
 else:
     gera_log(f'Data do arquivo de origem {data_arq_origem} não tem uma data válida!!!')
-    arquivo_origem = f'{arq_logs}'
+    arquivo_origem = f'{dir_logs_script}/{arq_logs}'
     arquivo_destino = f'{dir_remoto_logs}/{arq_logs_destino}'
     transferiu_logs = transfere_arq(arquivo_origem, arquivo_destino)
     if transferiu_logs:
